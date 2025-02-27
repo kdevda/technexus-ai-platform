@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String        @id @default(uuid())
+  email           String        @unique
+  password        String
+  name            String?
+  role            String        @default("user")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  status          String        @default("offline")
+  callHistory     CallHistory[]
+  loans           Loan[]
+
+  @@map("users")
+}
+
+model Loan {
+  id        String   @id @default(uuid())
+  amount    Decimal
+  status    String   @default("PENDING")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("loans")
+}
+
+model TableDefinition {
+  id          String            @id @default(uuid())
+  name        String            @unique
+  displayName String            @map("display_name")
+  description String?
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  fields      FieldDefinition[]
+  layouts     TableLayout[]
+
+  @@map("table_definitions")
+}
+
+model FieldDefinition {
+  id             String          @id @default(uuid())
+  name           String
+  displayName    String          @map("display_name")
+  type           String
+  required       Boolean         @default(false)
+  unique         Boolean         @default(false)
+  description    String?
+  defaultValue   String?         @map("default_value")
+  validation     String?
+  lookupConfig   Json?           @map("lookup_config")
+  currencyConfig Json?           @map("currency_config")
+  options        Json?
+  formula        String?
+  timezone       String?
+  tableId        String          @map("table_id")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  table          TableDefinition @relation(fields: [tableId], references: [id])
+
+  @@unique([tableId, name])
+  @@map("field_definitions")
+}
+
+model TableLayout {
+  id          String          @id @default(uuid())
+  name        String
+  displayName String          @map("display_name")
+  isDefault   Boolean         @default(false) @map("is_default")
+  tableId     String          @map("table_id")
+  sections    Json
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+  table       TableDefinition @relation(fields: [tableId], references: [id])
+
+  @@unique([tableId, name])
+  @@map("table_layouts")
+}
+
+model LoanApplication {
+  id        String   @id @default(uuid())
+  amount    Decimal
+  purpose   String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("loan_applications")
+}
+
+model Integration {
+  id           String         @id @default(cuid())
+  name         String         @unique @map("name")
+  description  String         @map("description")
+  category     String         @map("category")
+  icon         String         @map("icon")
+  isEnabled    Boolean        @default(false) @map("is_enabled")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  resendConfig ResendConfig?
+  twilioConfig TwilioConfig?
+
+  @@map("integrations")
+}
+
+model TwilioConfig {
+  id            String       @id @default(uuid())
+  accountSid    String       @map("account_sid")
+  authToken     String       @map("auth_token")
+  phoneNumbers  String[]     @map("phone_numbers")
+  webhookUrl    String?      @map("webhook_url")
+  enabled       Boolean      @default(false)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  integrationId String       @unique @map("integration_id")
+  twimlAppSid   String?      @map("twiml_app_sid")
+  integration   Integration  @relation(fields: [integrationId], references: [id])
+
+  @@map("twilio_configs")
+}
+
+model ResendConfig {
+  id            String       @id @default(uuid())
+  apiKey        String       @map("api_key")
+  fromEmail     String       @map("from_email")
+  domain        String?
+  enabled       Boolean      @default(false)
+  webhookUrl    String?      @map("webhook_url")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  integrationId String       @unique @map("integration_id")
+  integration   Integration  @relation(fields: [integrationId], references: [id])
+
+  @@map("resend_configs")
+}
+
+model CallHistory {
+  id           String        @id @default(uuid())
+  userId       String        @map("user_id")
+  phoneNumber  String        @map("phone_number")
+  direction    CallDirection
+  status       CallStatus
+  duration     Int?
+  recordingUrl String?       @map("recording_url")
+  notes        String?
+  startTime    DateTime      @map("start_time")
+  endTime      DateTime?     @map("end_time")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  user         User          @relation(fields: [userId], references: [id])
+
+  @@map("call_history")
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallStatus {
+  INITIATED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  MISSED
+  CANCELLED
+}

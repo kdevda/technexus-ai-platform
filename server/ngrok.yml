@@ -1,0 +1,6 @@
+version: "2"
+tunnels:
+  server:
+    addr: 3001
+    proto: http
+    hostname: macaque-fair-mako.ngrok-free.app # Optional, if you have a paid plan 
