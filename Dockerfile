@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy package.json files
 COPY server/package*.json ./server/
 
+# Copy Prisma schema first
+COPY server/prisma ./server/prisma/
+
 # Install server dependencies
 RUN cd server && npm install
 
