@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd client && npm install && npm run build && mkdir -p ../server/public && cp -r dist/* ../server/public/ && cd ../server && npm install && npm run build"
+buildCommand = "cd client && npm install && npm run build && cd .. && mkdir -p server/public && cp -r client/dist/* server/public/ && cd server && npm install && npm run build"
 watchPatterns = ["server/**/*", "client/**/*"]
 
 [deploy]
