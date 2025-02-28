@@ -10,9 +10,10 @@ cmds = [
 [phases.build]
 cmds = [
   "cd client && npm run build",
-  "mkdir -p ../server/public",
-  "cp -r dist/* ../server/public/",
-  "cd ../server && npm run build"
+  "cd ..",
+  "mkdir -p server/public",
+  "cp -r client/dist/* server/public/",
+  "cd server && npm run build"
 ]
 
 [start]
