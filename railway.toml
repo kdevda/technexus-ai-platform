@@ -1,10 +1,10 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd server && npm install && npm run build"
-watchPatterns = ["server/**/*"]
+buildCommand = "cd client && npm install && npm run build && mkdir -p ../server/public && cp -r dist/* ../server/public/ && cd ../server && npm install && npm run build"
+watchPatterns = ["server/**/*", "client/**/*"]
 
 [deploy]
-startCommand = "cd server && node dist/index.js"
+startCommand = "cd server && npx prisma migrate deploy && node dist/index.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
