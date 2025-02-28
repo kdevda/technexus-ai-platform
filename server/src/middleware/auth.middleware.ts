@@ -1,10 +1,10 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuthRequest } from '../types';
+import { AuthenticatedRequest } from '../types';
 import { Request } from 'express';
 
 export const authMiddleware = async (
-  req: AuthRequest,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -17,11 +17,22 @@ export const authMiddleware = async (
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
       id: string;
-      organizationId: string;
+      email: string;
       role: string;
+      name: string;
     };
 
-    req.user = decoded;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      name: decoded.name,
+      password: '', // We don't store this in the token
+      createdAt: new Date(), // These are not needed for auth checks
+      updatedAt: new Date(),
+      status: 'active'
+    };
+    
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

@@ -1,13 +1,9 @@
-import { User, Organization, TwilioConfig, ResendConfig, CallHistory } from '@prisma/client'
+import { User, Integration, TwilioConfig, ResendConfig, CallHistory } from '@prisma/client'
 import { Request, Response, NextFunction } from 'express';
 
-export interface UserWithRelations extends User {
-  callHistory?: CallHistory[]
-}
+export type { User, Integration, TwilioConfig, ResendConfig, CallHistory };
 
-export interface OrganizationWithRelations extends Organization {
-  twilioConfig?: TwilioConfig[]
-  resendConfig?: ResendConfig
+export interface UserWithRelations extends User {
   callHistory?: CallHistory[]
 }
 
@@ -34,21 +30,17 @@ export interface FieldDefinitionInput {
   timezone?: string
 }
 
-export interface AuthRequest extends Request {
-  user?: {
-    id: string
-    organizationId: string
-    role: string
-  }
+export interface AuthenticatedRequest extends Request {
+  user?: User;
 }
 
 export type AuthRequestHandler = (
-  req: AuthRequest,
+  req: AuthenticatedRequest,
   res: Response,
   next?: NextFunction
 ) => Promise<void> | void;
 
 export type RouteHandler = (
-  req: AuthRequest,
+  req: AuthenticatedRequest,
   res: Response
 ) => Promise<void> | void; 

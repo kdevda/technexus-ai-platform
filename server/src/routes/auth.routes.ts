@@ -22,26 +22,13 @@ router.post('/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Get the default organization
-    const organization = await prisma.organization.findUnique({
-      where: { id: 'org-default-id' }
-    });
-
-    if (!organization) {
-      return res.status(500).json({ message: 'Default organization not found' });
-    }
-
-    // Create user with organization
+    // Create user
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
-        role: 'ADMIN',
-        organizationId: organization.id
-      },
-      include: {
-        organization: true
+        role: 'ADMIN'
       }
     });
 
@@ -50,8 +37,7 @@ router.post('/register', async (req, res) => {
       { 
         id: user.id, 
         email: user.email,
-        role: user.role,
-        organizationId: user.organizationId
+        role: user.role
       },
       process.env.JWT_SECRET!
     );
@@ -62,8 +48,7 @@ router.post('/register', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        organizationId: user.organizationId
+        role: user.role
       },
       token
     });
@@ -102,8 +87,7 @@ router.post('/login', async (req, res) => {
       { 
         id: user.id, 
         email: user.email,
-        role: user.role,
-        organizationId: user.organizationId
+        role: user.role
       },
       process.env.JWT_SECRET || 'your-secret-key'
     );
@@ -116,8 +100,7 @@ router.post('/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role,
-        organizationId: user.organizationId
+        role: user.role
       },
       token
     });

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { query } from '../db/utils';
 import { prisma } from '../db';
-import { AuthRequest, RouteHandler } from '../types';
+import { AuthenticatedRequest, RouteHandler } from '../types';
 import twilio from 'twilio';
 import { authMiddleware } from '../middleware/auth.middleware';
 import { handleApiError } from '../utils/errorHandler';
@@ -10,7 +10,7 @@ import { wss } from '../index';
 
 const router = express.Router();
 
-const getCurrentConfig: RouteHandler = async (req: AuthRequest, res: Response) => {
+const getCurrentConfig: RouteHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const config = await prisma.twilioConfig.findFirst();
     
@@ -35,7 +35,7 @@ const getCurrentConfig: RouteHandler = async (req: AuthRequest, res: Response) =
   }
 };
 
-const getToken: RouteHandler = async (req: AuthRequest, res: Response) => {
+const getToken: RouteHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user?.id) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -111,8 +111,8 @@ const getToken: RouteHandler = async (req: AuthRequest, res: Response) => {
   }
 };
 
-router.get('/config/current', authMiddleware as any, getCurrentConfig);
-router.get('/token', authMiddleware as any, getToken);
+router.get('/config/current', authMiddleware, getCurrentConfig);
+router.get('/token', authMiddleware, getToken);
 
 // Get Twilio configuration
 router.get('/config', async (req: Request, res: Response): Promise<void> => {

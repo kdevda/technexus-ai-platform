@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import { prisma } from '../db';
-import { AuthRequest } from '../types';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { AuthenticatedRequest } from '../types';
 
 const router = express.Router();
 
@@ -55,7 +54,7 @@ router.get('/', async (req: Request, res: Response) => {
     console.error('Error in GET /integrations:', error);
     return res.status(500).json({ 
       error: 'Failed to fetch integrations',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -80,7 +79,10 @@ router.get('/:id', async (req: Request, res: Response) => {
     return res.json(integration);
   } catch (error) {
     console.error('Error fetching integration:', error);
-    return res.status(500).json({ error: 'Failed to fetch integration' });
+    return res.status(500).json({ 
+      error: 'Failed to fetch integration',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
@@ -109,7 +111,10 @@ router.put('/:id/toggle', async (req: Request, res: Response) => {
     return res.json(updatedIntegration);
   } catch (error) {
     console.error('Error toggling integration:', error);
-    return res.status(500).json({ error: 'Failed to toggle integration' });
+    return res.status(500).json({ 
+      error: 'Failed to toggle integration',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

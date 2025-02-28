@@ -1,150 +1,120 @@
-import express, { Response, Request } from 'express';
-import { Resend } from 'resend';
-import { query } from '../db/utils';
+import express from 'express';
 import { prisma } from '../db';
-import { AuthRequest, RouteHandler } from '../types';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { Resend } from 'resend';
+import { AuthenticatedRequest } from '../types';
 
 const router = express.Router();
 
-const getCurrentConfig: RouteHandler = async (req: AuthRequest, res: Response) => {
+// Get Resend configuration
+router.get('/config', async (req: AuthenticatedRequest, res) => {
   try {
-    if (!req.user?.organizationId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
     const config = await prisma.resendConfig.findFirst({
-      where: { organizationId: req.user.organizationId }
-    });
-    
-    if (!config) {
-      res.status(404).json({ error: 'Resend not configured' });
-      return;
-    }
-
-    const { apiKey, ...safeConfig } = config;
-    res.json(safeConfig);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch config' });
-  }
-};
-
-router.get('/config/current', authMiddleware as any, getCurrentConfig);
-
-// Get Resend configuration for organization
-router.get('/config/:organizationId', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { organizationId } = req.params;
-    
-    const config = await prisma.resendConfig.findFirst({
-      where: { organizationId }
+      select: {
+        id: true,
+        fromEmail: true,
+        domain: true,
+        enabled: true,
+        webhookUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        integrationId: true
+      }
     });
 
-    if (!config) {
-      res.status(404).json({ error: 'Configuration not found' });
-      return;
-    }
-
-    const { apiKey, ...safeConfig } = config;
-    res.json(safeConfig);
+    res.json(config);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch configuration' });
+    console.error('Error fetching Resend config:', error);
+    res.status(500).json({ message: 'Failed to fetch Resend configuration' });
   }
 });
 
-// Update configuration
-router.put('/config/:organizationId', async (req, res) => {
+// Update Resend configuration
+router.put('/config', async (req: AuthenticatedRequest, res) => {
   try {
-    const { organizationId } = req.params;
     const { apiKey, fromEmail, domain, webhookUrl, enabled, integrationId } = req.body;
 
-    // Skip validation for testing purposes
-    // In production, uncomment the following code to validate the API key
-    /*
-    const resend = new Resend(apiKey);
-    await resend.emails.send({
-      from: fromEmail,
-      to: fromEmail,
-      subject: 'Test Email',
-      text: 'This is a test email to verify your Resend configuration.',
-    });
-    */
+    const config = await prisma.resendConfig.findFirst();
 
-    try {
-      // First check if a config exists for this organization
-      const existingConfig = await prisma.resendConfig.findFirst({
-        where: {
-          organizationId: organizationId
+    if (!config) {
+      // Create new config
+      const newConfig = await prisma.resendConfig.create({
+        data: {
+          apiKey,
+          fromEmail,
+          domain,
+          webhookUrl,
+          enabled,
+          integrationId
+        },
+        select: {
+          id: true,
+          fromEmail: true,
+          domain: true,
+          enabled: true,
+          webhookUrl: true,
+          createdAt: true,
+          updatedAt: true,
+          integrationId: true
         }
       });
 
-      let updatedConfig;
-      
-      if (existingConfig) {
-        // Update existing config
-        updatedConfig = await prisma.resendConfig.update({
-          where: {
-            id: existingConfig.id
-          },
-          data: {
-            apiKey,
-            fromEmail,
-            domain,
-            webhookUrl,
-            enabled,
-            integrationId
-          },
-          select: {
-            id: true,
-            organizationId: true,
-            fromEmail: true,
-            domain: true,
-            enabled: true,
-            webhookUrl: true,
-            createdAt: true,
-            updatedAt: true,
-            integrationId: true
-          }
-        });
-      } else {
-        // Create new config
-        updatedConfig = await prisma.resendConfig.create({
-          data: {
-            organizationId,
-            apiKey,
-            fromEmail,
-            domain,
-            webhookUrl,
-            enabled: enabled ?? true,
-            integrationId
-          },
-          select: {
-            id: true,
-            organizationId: true,
-            fromEmail: true,
-            domain: true,
-            enabled: true,
-            webhookUrl: true,
-            createdAt: true,
-            updatedAt: true,
-            integrationId: true
-          }
-        });
-      }
-
-      res.json({
-        message: 'Configuration updated successfully',
-        config: updatedConfig
-      });
-    } catch (error) {
-      console.error('Database error:', error);
-      res.status(500).json({ error: 'Database error occurred' });
-      return;
+      return res.json(newConfig);
     }
+
+    // Update existing config
+    const updatedConfig = await prisma.resendConfig.update({
+      where: { id: config.id },
+      data: {
+        apiKey,
+        fromEmail,
+        domain,
+        webhookUrl,
+        enabled,
+        integrationId
+      },
+      select: {
+        id: true,
+        fromEmail: true,
+        domain: true,
+        enabled: true,
+        webhookUrl: true,
+        createdAt: true,
+        updatedAt: true,
+        integrationId: true
+      }
+    });
+
+    res.json(updatedConfig);
   } catch (error) {
     console.error('Error updating Resend config:', error);
-    res.status(500).json({ error: 'Failed to update configuration' });
+    res.status(500).json({ message: 'Failed to update Resend configuration' });
+  }
+});
+
+// Send email
+router.post('/send', async (req: AuthenticatedRequest, res) => {
+  try {
+    const { to, subject, html } = req.body;
+
+    const config = await prisma.resendConfig.findFirst();
+
+    if (!config || !config.enabled) {
+      return res.status(400).json({ message: 'Resend is not configured or enabled' });
+    }
+
+    const resend = new Resend(config.apiKey);
+
+    const result = await resend.emails.send({
+      from: config.fromEmail,
+      to,
+      subject,
+      html
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ message: 'Failed to send email' });
   }
 });
 

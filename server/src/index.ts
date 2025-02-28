@@ -5,13 +5,13 @@ import recordsRouter from './routes/records';
 import layoutsRouter from './routes/layouts';
 import twilioRouter from './routes/twilio';
 import resendRouter from './routes/resend';
-import organizationRouter from './routes/organization.routes';
 import integrationsRouter from './routes/integrations';
 import { createServer } from 'http';
 import { CallWebSocketServer } from './websocket';
 import authRoutes from './routes/auth.routes';
 import { apiLimiter, authLimiter } from './middleware/rate-limit.middleware';
 import morgan from 'morgan';
+import { prisma } from './db';
 
 const app = express();
 const server = createServer(app);
@@ -69,8 +69,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/twilio', twilioRouter);
 app.use('/api/resend', resendRouter);
 app.use('/api/integrations', integrationsRouter);
-// Remove organization routes since we've removed the organization concept
-// app.use('/api/organizations', organizationRouter);
 
 // General routes last
 app.use('/api/tables', tablesRouter);
@@ -100,17 +98,46 @@ app.get('/api/test', (_req, res) => {
 app.get('/api/health', (_req, res) => {
   try {
     console.log('Health check endpoint called');
-    res.json({ 
-      status: 'ok', 
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      version: '1.0.0'
-    });
+    
+    // Check if server is ready to accept requests
+    if (!server.listening) {
+      console.error('Server is not listening');
+      res.status(503).json({ 
+        status: 'error',
+        message: 'Server is not ready',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+      return;
+    }
+
+    // Basic database check using the existing prisma instance
+    prisma.$queryRaw`SELECT 1`
+      .then(() => {
+        res.json({ 
+          status: 'ok',
+          message: 'Server is healthy',
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV || 'development',
+          version: '1.0.0'
+        });
+      })
+      .catch((error: Error) => {
+        console.error('Database health check failed:', error);
+        res.status(503).json({ 
+          status: 'error',
+          message: 'Database connection failed',
+          timestamp: new Date().toISOString(),
+          environment: process.env.NODE_ENV || 'development'
+        });
+      });
   } catch (error) {
     console.error('Error in health check endpoint:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
+    res.status(503).json({ 
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
     });
   }
 });
