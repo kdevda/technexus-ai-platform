@@ -12,6 +12,8 @@ import authRoutes from './routes/auth.routes';
 import { apiLimiter, authLimiter } from './middleware/rate-limit.middleware';
 import morgan from 'morgan';
 import { prisma } from './db';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const server = createServer(app);
@@ -65,18 +67,16 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/api/', apiLimiter);
 app.use('/api/auth/', authLimiter);
 
-// Routes - specific routes first
+// API routes should come first
 app.use('/api/auth', authRoutes);
 app.use('/api/twilio', twilioRouter);
 app.use('/api/resend', resendRouter);
 app.use('/api/integrations', integrationsRouter);
-
-// General routes last
 app.use('/api/tables', tablesRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/layouts', layoutsRouter);
 
-// Test route
+// API test routes
 app.get('/api/test', (_req, res) => {
   try {
     console.log('Test endpoint called');
@@ -95,7 +95,6 @@ app.get('/api/test', (_req, res) => {
   }
 });
 
-// Health check endpoint
 app.get('/api/health', async (_req, res) => {
   try {
     console.log('Health check endpoint called');
@@ -143,9 +142,9 @@ app.get('/api/health', async (_req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction): void => {
-  console.error('Error:', err);
+// Error handling middleware for API routes
+app.use('/api', (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction): void => {
+  console.error('API Error:', err);
   
   if (err.name === 'ValidationError') {
     res.status(400).json({ error: err.message });
@@ -158,18 +157,56 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-// 404 handler
-app.use((_req: express.Request, res: express.Response) => {
-  res.status(404).json({ error: 'Not found' });
+// API 404 handler - only for /api routes
+app.use('/api/*', (_req: express.Request, res: express.Response) => {
+  res.status(404).json({ error: 'API endpoint not found' });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log('Available routes:');
-  console.log(`- Health check: http://localhost:${PORT}/api/health`);
-  console.log(`- Test endpoint: http://localhost:${PORT}/api/test`);
-  console.log(`- Auth API: http://localhost:${PORT}/api/auth`);
-  console.log(`- Integrations API: http://localhost:${PORT}/api/integrations`);
-  console.log(`- Tables API: http://localhost:${PORT}/api/tables`);
-  console.log(`- Layouts API: http://localhost:${PORT}/api/layouts`);
-}); 
+// Static file serving - assume files are in the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Simple catchall route for client-side routing
+app.get('*', (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  
+  // Send the React app for all other routes
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// At the beginning of your file, before starting the server
+async function checkDatabaseConnection() {
+  try {
+    await prisma.$connect();
+    console.log('Database connection successful');
+    return true;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
+}
+
+// Then in your server startup code
+const startServer = async () => {
+  const isDatabaseConnected = await checkDatabaseConnection();
+  
+  if (!isDatabaseConnected && process.env.NODE_ENV === 'production') {
+    console.error('Cannot start server without database connection in production');
+    process.exit(1);
+  }
+  
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log('Available routes:');
+    console.log(`- Health check: http://localhost:${PORT}/api/health`);
+    console.log(`- Test endpoint: http://localhost:${PORT}/api/test`);
+    console.log(`- Auth API: http://localhost:${PORT}/api/auth`);
+    console.log(`- Integrations API: http://localhost:${PORT}/api/integrations`);
+    console.log(`- Tables API: http://localhost:${PORT}/api/tables`);
+    console.log(`- Layouts API: http://localhost:${PORT}/api/layouts`);
+  });
+};
+
+startServer(); 

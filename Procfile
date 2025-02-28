@@ -1,0 +1,1 @@
+web: cd server && npm run build:all && npx prisma migrate deploy && node dist/index.js 

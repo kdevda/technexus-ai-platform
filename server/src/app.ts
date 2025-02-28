@@ -15,7 +15,7 @@ app.use(express.json());
 app.get('/api/health', async (_req, res) => {
   try {
     // Test database connection
-    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$queryRaw`SELECT 1`; 
     
     res.status(200).json({ 
       status: 'ok',

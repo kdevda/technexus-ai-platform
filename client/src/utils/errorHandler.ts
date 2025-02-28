@@ -1,5 +1,6 @@
 import { AxiosError } from 'axios';
 import { toast } from '@/components/ui/use-toast';
+import axios from 'axios';
 
 /**
  * Extracts a user-friendly error message from an API error
@@ -62,23 +63,35 @@ export const getErrorMessage = (error: any, defaultMessage = 'An unexpected erro
 };
 
 /**
- * Handles API errors by displaying a toast notification
- * @param error The error object from an API call
- * @param title The title for the toast notification
- * @param defaultMessage Default message to show if error details cannot be determined
+ * Handles different types of errors and displays appropriate toast messages
  */
-export const handleApiError = (
-  error: any, 
-  title = 'Error', 
-  defaultMessage = 'An unexpected error occurred'
-): void => {
-  console.error('API Error:', error);
-  
-  const errorMessage = getErrorMessage(error, defaultMessage);
-  
+export const handleError = (error: Error | AxiosError | unknown) => {
+  if (error instanceof Error) {
+    // Handle Axios errors
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      const message = axiosError.response?.data?.message || axiosError.message;
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: message
+      });
+      return;
+    }
+    
+    // Handle regular errors
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: error.message
+    });
+    return;
+  }
+
+  // Handle unknown errors
   toast({
-    variant: 'destructive',
-    title,
-    description: errorMessage,
+    variant: "destructive",
+    title: "Error",
+    description: "An unexpected error occurred"
   });
 }; 

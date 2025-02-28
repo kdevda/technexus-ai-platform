@@ -8,8 +8,13 @@ export default defineConfig({
     sourcemap: true
   },
   server: {
-    port: process.env.PORT ? parseInt(process.env.PORT) : 3000,
-    host: true // needed for Railway
+    port: 3000,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   define: {
     'process.env': process.env,

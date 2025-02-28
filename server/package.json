@@ -8,6 +8,8 @@
     "prebuild": "npm run clean",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "build:client": "cd ../client && npm install && npm run build && mkdir -p ../server/public && cp -r dist/* ../server/public/",
+    "build:all": "npm run build:client && npm install && npm run build",
     "migrate": "prisma migrate deploy",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",

@@ -16,7 +16,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ title, description, features 
       {description}
     </Typography>
     <Box>
-      {features.map((feature, index) => (
+      {features.map((feature: string, index: number) => (
         <Typography key={index} variant="body2" sx={{ mt: 1 }}>
           • {feature}
         </Typography>
