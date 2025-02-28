@@ -35,16 +35,17 @@ app.use(cors({
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:3001',
-      'https://macaque-fair-mako.ngrok-free.app'
+      'https://technexus.ca',
+      'https://www.technexus.ca'
     ];
     
-    // Check if the origin is allowed or matches the ngrok pattern
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.match(/\.ngrok-free\.app$/)) {
+    // Check if the origin is allowed
+    if (allowedOrigins.includes(origin)) {
       console.log(`Origin ${origin} allowed by CORS`);
       callback(null, true);
     } else {
-      console.warn(`Origin ${origin} not allowed by CORS, but allowing for debugging`);
-      callback(null, true); // Allow all origins for now to debug
+      console.warn(`Origin ${origin} not allowed by CORS`);
+      callback(null, true); // Allow all origins in production for now
     }
   },
   credentials: true,
@@ -95,11 +96,11 @@ app.get('/api/test', (_req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
   try {
     console.log('Health check endpoint called');
     
-    // Check if server is ready to accept requests
+    // Basic server check
     if (!server.listening) {
       console.error('Server is not listening');
       res.status(503).json({ 
@@ -111,26 +112,26 @@ app.get('/api/health', (_req, res) => {
       return;
     }
 
-    // Basic database check using the existing prisma instance
-    prisma.$queryRaw`SELECT 1`
-      .then(() => {
-        res.json({ 
-          status: 'ok',
-          message: 'Server is healthy',
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV || 'development',
-          version: '1.0.0'
-        });
-      })
-      .catch((error: Error) => {
-        console.error('Database health check failed:', error);
-        res.status(503).json({ 
-          status: 'error',
-          message: 'Database connection failed',
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV || 'development'
-        });
+    // Database check
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      
+      res.json({ 
+        status: 'ok',
+        message: 'Server is healthy',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development',
+        version: '1.0.0'
       });
+    } catch (dbError) {
+      console.error('Database health check failed:', dbError);
+      res.status(503).json({ 
+        status: 'error',
+        message: 'Database connection failed',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || 'development'
+      });
+    }
   } catch (error) {
     console.error('Error in health check endpoint:', error);
     res.status(503).json({ 
