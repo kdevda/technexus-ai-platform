@@ -1,6 +1,5 @@
 [build]
-builder = "nixpacks"
-buildCommand = "cd server && npm install && npm run build"
+builder = "DOCKERFILE"
 watchPatterns = ["server/**/*"]
 
 [deploy]
