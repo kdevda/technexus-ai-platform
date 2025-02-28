@@ -1,7 +1,7 @@
 [build]
 builder = "nixpacks"
-buildCommand = "cd client && npm install && npm run build && cd .. && mkdir -p server/public && cp -r client/dist/* server/public/ && cd server && npm install && npm run build"
-watchPatterns = ["server/**/*", "client/**/*"]
+buildCommand = "cd server && npm install && npm run build"
+watchPatterns = ["server/**/*"]
 
 [deploy]
 startCommand = "cd server && npx prisma migrate deploy && node dist/index.js"
